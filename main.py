@@ -57,13 +57,18 @@ async def start_cleanup(interaction: discord.Interaction):
         print(f"Total found: {len(channels_to_delete)} channels, {len(categories_to_delete)} categories")
         
         # Delete all regular channels first
-        for channel in channels_to_delete:
+        for i, channel in enumerate(channels_to_delete):
             try:
                 await channel.delete(reason="Server cleanup requested by administrator")
                 deleted_channels += 1
                 print(f"Deleted channel: {channel.name}")
-                # Small delay to avoid rate limits
-                await asyncio.sleep(0.5)
+                
+                # Send progress update every 10 deletions to keep interaction alive
+                if (i + 1) % 10 == 0:
+                    await interaction.followup.send(f"🗑️ Progress: Deleted {deleted_channels} channels so far...")
+                
+                # Smaller delay to avoid timeouts but still respect rate limits
+                await asyncio.sleep(0.2)
             except discord.Forbidden:
                 errors.append(f"No permission to delete channel: {channel.name}")
             except discord.NotFound:
@@ -82,8 +87,8 @@ async def start_cleanup(interaction: discord.Interaction):
                 await category.delete(reason="Server cleanup requested by administrator")
                 deleted_categories += 1
                 print(f"Deleted category: {category.name}")
-                # Small delay to avoid rate limits
-                await asyncio.sleep(0.5)
+                # Smaller delay to avoid timeouts but still respect rate limits
+                await asyncio.sleep(0.2)
             except discord.Forbidden:
                 errors.append(f"No permission to delete category: {category.name}")
                 print(f"Permission denied for category: {category.name}")
