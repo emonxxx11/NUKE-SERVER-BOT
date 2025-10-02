@@ -4,10 +4,10 @@ import asyncio
 import os
 from typing import List
 
-# Bot setup with intents
+# Bot setup with minimal intents (no privileged intents required)
 intents = discord.Intents.default()
-intents.message_content = True
 intents.guilds = True
+# Remove message_content intent as it's privileged and not needed for slash commands
 
 bot = commands.Bot(command_prefix='!', intents=intents)
 
