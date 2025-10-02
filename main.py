@@ -120,6 +120,87 @@ async def start_cleanup(interaction: discord.Interaction):
         await interaction.followup.send(f"❌ An unexpected error occurred: {str(e)}")
         print(f"Unexpected error in start_cleanup: {e}")
 
+@bot.tree.command(name="test", description="Create 50 test channels for testing the cleanup bot")
+async def create_test_channels(interaction: discord.Interaction):
+    """
+    Create 50 test channels and some categories for testing purposes
+    """
+    # Check if user has administrator permissions
+    if not interaction.user.guild_permissions.administrator:
+        await interaction.response.send_message("❌ You need Administrator permissions to use this command!", ephemeral=True)
+        return
+    
+    # Defer the response since this might take a while
+    await interaction.response.defer()
+    
+    guild = interaction.guild
+    created_channels = 0
+    created_categories = 0
+    errors = []
+    
+    try:
+        # Send initial status message
+        await interaction.followup.send("🧪 Creating test channels and categories... This may take a few moments.")
+        
+        # Create 5 test categories first
+        categories = []
+        category_names = ["Test Category 1", "Test Category 2", "Test Category 3", "Test Category 4", "Test Category 5"]
+        
+        for cat_name in category_names:
+            try:
+                category = await guild.create_category(cat_name, reason="Test channels for cleanup bot testing")
+                categories.append(category)
+                created_categories += 1
+                print(f"Created category: {cat_name}")
+                await asyncio.sleep(0.2)  # Rate limit protection
+            except Exception as e:
+                errors.append(f"Error creating category {cat_name}: {str(e)}")
+        
+        # Create 50 test channels (10 in each category)
+        channel_count = 0
+        for i in range(50):
+            try:
+                # Distribute channels across categories
+                category = categories[i % len(categories)] if categories else None
+                channel_name = f"test-channel-{i+1:02d}"
+                
+                await guild.create_text_channel(
+                    channel_name, 
+                    category=category,
+                    reason="Test channel for cleanup bot testing"
+                )
+                created_channels += 1
+                channel_count += 1
+                print(f"Created channel: {channel_name}")
+                
+                # Send progress update every 10 channels
+                if channel_count % 10 == 0:
+                    await interaction.followup.send(f"🔄 Progress: Created {created_channels} channels so far...")
+                
+                await asyncio.sleep(0.2)  # Rate limit protection
+                
+            except Exception as e:
+                errors.append(f"Error creating channel test-channel-{i+1:02d}: {str(e)}")
+        
+        # Send completion message
+        success_msg = f"✅ **Test Setup Complete!**\n"
+        success_msg += f"📁 Created {created_categories} categories\n"
+        success_msg += f"💬 Created {created_channels} channels\n\n"
+        success_msg += f"🎯 **Ready for testing!** Use `/start` to delete everything instantly!"
+        
+        if errors:
+            success_msg += f"\n⚠️ **Errors encountered:**\n"
+            for error in errors[:3]:  # Show only first 3 errors
+                success_msg += f"• {error}\n"
+            if len(errors) > 3:
+                success_msg += f"• ... and {len(errors) - 3} more errors\n"
+        
+        await interaction.followup.send(success_msg)
+        
+    except Exception as e:
+        await interaction.followup.send(f"❌ An unexpected error occurred: {str(e)}")
+        print(f"Unexpected error in create_test_channels: {e}")
+
 @bot.tree.command(name="info", description="Get information about the bot")
 async def bot_info(interaction: discord.Interaction):
     """
@@ -133,7 +214,7 @@ async def bot_info(interaction: discord.Interaction):
     
     embed.add_field(
         name="📋 Commands",
-        value="`/start` - Delete all channels and categories\n`/info` - Show this information",
+        value="`/start` - Delete all channels and categories\n`/test` - Create 50 test channels for testing\n`/info` - Show this information",
         inline=False
     )
     
