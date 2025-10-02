@@ -3,6 +3,8 @@ from discord.ext import commands
 import asyncio
 import os
 from typing import List
+from flask import Flask, jsonify
+import threading
 
 # Bot setup with minimal intents (no privileged intents required)
 intents = discord.Intents.default()
@@ -160,12 +162,58 @@ async def on_command_error(ctx, error):
     print(f"Command error: {error}")
     await ctx.send(f"An error occurred: {str(error)}")
 
-# Run the bot
-if __name__ == "__main__":
+# Flask web server for Render
+app = Flask(__name__)
+
+@app.route('/')
+def home():
+    return jsonify({
+        "status": "online",
+        "bot": "Discord Cleanup Bot",
+        "message": "Bot is running! Use /start command in Discord to delete all channels and categories."
+    })
+
+@app.route('/health')
+def health():
+    return jsonify({"status": "healthy", "bot_connected": bot.is_ready()})
+
+@app.route('/stats')
+def stats():
+    if bot.is_ready():
+        return jsonify({
+            "status": "connected",
+            "guilds": len(bot.guilds),
+            "latency": round(bot.latency * 1000, 2)
+        })
+    else:
+        return jsonify({"status": "disconnected"})
+
+def run_bot():
+    """Run the Discord bot in a separate thread"""
     token = os.getenv('DISCORD_BOT_TOKEN')
     if not token:
         print("❌ Error: DISCORD_BOT_TOKEN environment variable not found!")
-        print("Please set your Discord bot token as an environment variable.")
-        exit(1)
+        return
     
-    bot.run(token)
+    try:
+        bot.run(token)
+    except Exception as e:
+        print(f"Bot error: {e}")
+
+def run_flask():
+    """Run the Flask web server"""
+    port = int(os.getenv('PORT', 10000))
+    app.run(host='0.0.0.0', port=port, debug=False)
+
+# Run both bot and web server
+if __name__ == "__main__":
+    # Start Discord bot in background thread
+    bot_thread = threading.Thread(target=run_bot, daemon=True)
+    bot_thread.start()
+    
+    print("🚀 Starting Discord bot and web server...")
+    print("🤖 Bot will be available for /start command")
+    print(f"🌐 Web server will be available on port {os.getenv('PORT', 10000)}")
+    
+    # Start Flask web server (main thread)
+    run_flask()
