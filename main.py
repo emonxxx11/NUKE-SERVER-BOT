@@ -49,8 +49,12 @@ async def start_cleanup(interaction: discord.Interaction):
         for channel in guild.channels:
             if isinstance(channel, discord.CategoryChannel):
                 categories_to_delete.append(channel)
+                print(f"Found category: {channel.name}")
             else:
                 channels_to_delete.append(channel)
+                print(f"Found channel: {channel.name} (type: {type(channel).__name__})")
+        
+        print(f"Total found: {len(channels_to_delete)} channels, {len(categories_to_delete)} categories")
         
         # Delete all regular channels first
         for channel in channels_to_delete:
@@ -68,6 +72,10 @@ async def start_cleanup(interaction: discord.Interaction):
             except Exception as e:
                 errors.append(f"Error deleting channel {channel.name}: {str(e)}")
         
+        # Send update message before deleting categories
+        if categories_to_delete:
+            await interaction.followup.send(f"🗂️ Now deleting {len(categories_to_delete)} categories...")
+        
         # Delete all categories after channels
         for category in categories_to_delete:
             try:
@@ -78,11 +86,14 @@ async def start_cleanup(interaction: discord.Interaction):
                 await asyncio.sleep(0.5)
             except discord.Forbidden:
                 errors.append(f"No permission to delete category: {category.name}")
+                print(f"Permission denied for category: {category.name}")
             except discord.NotFound:
                 # Category already deleted
+                print(f"Category not found (already deleted): {category.name}")
                 pass
             except Exception as e:
                 errors.append(f"Error deleting category {category.name}: {str(e)}")
+                print(f"Error deleting category {category.name}: {str(e)}")
         
         # Send completion message
         success_msg = f"✅ **Cleanup Complete!**\n"
